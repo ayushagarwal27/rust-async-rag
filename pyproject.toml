@@ -1,0 +1,16 @@
+[project]
+name = "async-rust-rag"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "beautifulsoup4>=4.14.3",
+    "chromadb>=1.5.9",
+    "httpx>=0.28.1",
+    "markdownify>=1.2.2",
+    "openai>=2.40.0",
+    "python-dotenv>=1.2.2",
+    "sentence-transformers>=5.5.1",
+    "tiktoken>=0.13.0",
+]
