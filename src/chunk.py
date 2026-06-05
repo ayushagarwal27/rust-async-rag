@@ -24,7 +24,12 @@ def chunk_text(text:str, source_file:str, doc_type:str,  chunk_size:int = 500, o
 
     
     if current_chunk.strip():
-        chunks.append({"text":current_chunk.strip()})
+        chunks.append({
+                "text":current_chunk.strip(), 
+                "source_file": source_file, 
+                "doc_type":doc_type, 
+                "chunk_index":len(chunks)
+        })
 
     return chunks
 
