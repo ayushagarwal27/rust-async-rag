@@ -5,12 +5,14 @@ model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 client = chromadb.PersistentClient(path="./data/chroma")
 collection = client.get_or_create_collection("async-rust-docs")
 
-def embed_and_store(chunks:list[dict]):
+def embed_and_store(chunks:list[dict], source_file:str):
     text = [c["text"] for c in chunks]
     embeddings = model.encode(text, show_progress_bar=True)
 
+    safe_name = source_file.replace("/", "_").replace(".", "_")
+
     collection.upsert(
-        ids=[f"chunk_{i}" for i in range(len(chunks))],
+        ids=[f"{safe_name}_{i}" for i in range(len(chunks))], 
         embeddings=embeddings.tolist(),
         documents=text,
         metadatas=[{"source": c["source_file"]} for c in chunks]
@@ -25,12 +27,16 @@ if __name__ =="__main__":
     print(f"Found {len(all_files)} files")
 
     for source_file_path in all_files:
-        text = Path(source_file_path).read_text()
-        doc_type=source_file_path.parts[1]
-        #Chunk the data
-        chunks = chunk_text(text=text, source_file=str(source_file_path), doc_type=doc_type)
-        embed_and_store(chunks)   # Store in ChromaDB
-        print(f"  ingested {source_file_path} → {len(chunks)} chunks")
+        try:
+            text = Path(source_file_path).read_text()
+            doc_type=source_file_path.parts[1]
+            #Chunk the data
+            chunks = chunk_text(text=text, source_file=str(source_file_path), doc_type=doc_type)
+            embed_and_store(chunks, str(source_file_path))   # Store in ChromaDB
+            print(f"  ingested {source_file_path} → {len(chunks)} chunks")
+        except Exception as e:
+             print(f"✗ ERROR on {source_file_path}: {e}")
+             continue
 
     print(f"\nTotal chunks in DB: {collection.count()}")
 
