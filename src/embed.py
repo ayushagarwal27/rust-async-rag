@@ -1,5 +1,7 @@
 from sentence_transformers import SentenceTransformer
+from vectorstore import upsert_chunks, create_collection
 import chromadb
+
 
 model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 client = chromadb.PersistentClient(path="./data/chroma")
@@ -26,19 +28,36 @@ if __name__ =="__main__":
     all_files = list(Path("knowledge_base").rglob("*.md"))
     print(f"Found {len(all_files)} files")
 
-    for source_file_path in all_files:
-        try:
-            text = Path(source_file_path).read_text()
-            doc_type=source_file_path.parts[1]
-            #Chunk the data
-            chunks = chunk_text(text=text, source_file=str(source_file_path), doc_type=doc_type)
-            embed_and_store(chunks, str(source_file_path))   # Store in ChromaDB
-            print(f"  ingested {source_file_path} → {len(chunks)} chunks")
-        except Exception as e:
-             print(f"✗ ERROR on {source_file_path}: {e}")
-             continue
 
-    print(f"\nTotal chunks in DB: {collection.count()}")
+    # ---  ingest in Qdrant ----
+
+    for source_file_path in all_files:
+        text = Path(source_file_path).read_text(encoding="utf-8")
+        doc_type = source_file_path.parts[1]
+        chunks = chunk_text(
+            text = text,
+            source_file=str(source_file_path),
+            doc_type=doc_type
+         )
+        embeddings = model.encode([c["text"] for c in chunks])
+        upsert_chunks(chunks, embeddings, str(source_file_path))
+        print(f"✓ {source_file_path} → {len(chunks)} chunks")
+
+
+    # ---- ingest in chromadb ----
+    # for source_file_path in all_files:
+    #     try:
+    #         text = Path(source_file_path).read_text()
+    #         doc_type=source_file_path.parts[1]
+    #         #Chunk the data
+    #         chunks = chunk_text(text=text, source_file=str(source_file_path), doc_type=doc_type)
+    #         embed_and_store(chunks, str(source_file_path))   # Store in ChromaDB
+    #         print(f"  ingested {source_file_path} → {len(chunks)} chunks")
+    #     except Exception as e:
+    #          print(f"✗ ERROR on {source_file_path}: {e}")
+    #          continue
+
+    # print(f"\nTotal chunks in DB: {collection.count()}")
 
     # Test Query
     query = "how does tokio schedule tasks"

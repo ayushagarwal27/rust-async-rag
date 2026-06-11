@@ -1,6 +1,6 @@
 # 🦀 Async Rust Debugging RAG
 
-![Description of image](/images/Screenshot1.png)
+![Prototype Screenshot](/images/Screenshot1.png)
 
 A retrieval-augmented generation (RAG) system for debugging async Rust code.
 Ingests tokio.rs docs, the tracing crate, and the Rust async book into a local

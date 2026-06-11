@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 
 from sentence_transformers import SentenceTransformer
+from vectorstore import search
 import chromadb
 from openai import OpenAI
 
@@ -16,12 +17,18 @@ openai = OpenAI(api_key=api_key)
 def query(question:str, n_results:int = 5)->str:
     question_embedding = model.encode([question])[0]
 
-    results = collection.query(
-        query_embeddings=[question_embedding.tolist()],
-        n_results=n_results
-    )
+    # ---- Search in ChromaDB ----
+    # results = collection.query(
+    #     query_embeddings=[question_embedding.tolist()],
+    #     n_results=n_results
+    # )
+    # context = "\n\n---\n\n".join(results["documents"][0])
 
-    context = "\n\n---\n\n".join(results["documents"][0])
+    # --- Search in Qdrant ----
+    results = search(question_embedding, n_results)
+    context = "\n\n---\n\n".join([r.payload["text"] for r in results])
+
+
     prompt = f"""You are an expert in async Rust debugging.
     Use ONLY the following documentation excerpts to answer the question.
     If the answer isn't in the excerpts, say so.
