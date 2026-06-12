@@ -13,7 +13,7 @@
 ### Day 3
 
 - Embed chunks and store them in ChromaDB
-- Sentenced Transformer and "BAAI/bge-small-en-v1.5" for embedding
+- Sentenced Transformer and `BAAI/bge-small-en-v1.5` for embedding
 
 ### Day 4
 
@@ -32,3 +32,9 @@
 - Created `vectorstore.py` with `create_collection`, `upsert_chunks`, `search`
 - Re-ingested all 313 chunks into Qdrant Cloud
 - Verified: query "how does tokio schedule tasks" returns same relevant results as ChromaDB
+
+### Day 6
+
+- Decided to use FastAPI instead of HF Spaces to get REST API response that integrates more naturally in a webapp
+- Wrapped `query()` in a FastAPI endpoint `/api/rag/query`
+- Fixed `query()` to return `(answer, sources)` tuple — was returning only the answer string, causing `ValueError: too many values to unpack`

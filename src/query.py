@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 
 from sentence_transformers import SentenceTransformer
-from vectorstore import search
+from src.vectorstore import search
 import chromadb
 from openai import OpenAI
 
@@ -27,6 +27,7 @@ def query(question:str, n_results:int = 5)->str:
     # --- Search in Qdrant ----
     results = search(question_embedding, n_results)
     context = "\n\n---\n\n".join([r.payload["text"] for r in results])
+    sources = [r.payload["source"] for r in results]
 
 
     prompt = f"""You are an expert in async Rust debugging.
@@ -39,10 +40,10 @@ def query(question:str, n_results:int = 5)->str:
     Question: {question}
     Answer:"""
     
-    response = openai.chat.completions.create(model="gpt-5-mini", messages=[{"role":"user", "content": prompt}])
+    response = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user", "content": prompt}])
     answer = response.choices[0].message.content
-    print(answer)
-    return answer
+    # print(answer)
+    return answer, sources
 
 if __name__ == "__main__":
     print("Async Rust Debugging RAG")
