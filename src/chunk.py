@@ -1,37 +1,98 @@
 import tiktoken
+import re
 
 ENCODING = tiktoken.encoding_for_model("gpt-4o-mini")
 
 def chunk_text(text:str, source_file:str, doc_type:str,  chunk_size:int = 500, overlap:int = 50) -> list[dict]:
-    paragraphs = text.split("\n\n")
+
+    segments = split_by_code_blocks(text)
 
     chunks = []
     current_chunk = ""
 
-    for paragraph in paragraphs:
-         # If adding this paragraph exceeds chunk_size tokens, save and slide window
-        if count_tokens(current_chunk + paragraph) > chunk_size:
+    for segment in segments:
+        code = segment["text"]
+
+        if segment["type"] == 'code':
+            if  count_tokens(code) < 50:
+                current_chunk += "\n\n" + code
+                continue
+
+            # code block — never split it
+            # if current chunk has content, save it first
+            if  current_chunk.strip():
+                chunks.append({
+                    "text":current_chunk.strip(), 
+                    "source_file": source_file, 
+                    "doc_type":doc_type, 
+                    "chunk_index":len(chunks)
+                })
+                current_chunk = get_last_n_tokens(current_chunk, overlap)
+
+            # code block becomes its own chunk regardless of size
             chunks.append({
-                "text":current_chunk.strip(), 
-                "source_file": source_file, 
-                "doc_type":doc_type, 
+                "text":code.strip(),
+                "source_file":source_file,
+                "doc_type":doc_type,
                 "chunk_index":len(chunks)
             })
 
-            # Overlap: keep the last N tokens as context for the next chunk
-            current_chunk = get_last_n_tokens(current_chunk, overlap)
-        current_chunk += "\n\n" + paragraph
+            # reset — code block breaks the flow
+            current_chunk = ""
+        else:
+            paragraphs = segment["text"].split("\n\n")
+
+            for paragraph in paragraphs:
+
+                if not paragraph.strip():
+                    continue
+
+                # If adding this paragraph exceeds chunk_size tokens, save and slide window
+                if count_tokens(current_chunk + paragraph) > chunk_size:
+                    if current_chunk.strip():
+                        chunks.append({
+                                "text":current_chunk.strip(), 
+                                "source_file": source_file, 
+                                "doc_type":doc_type, 
+                                "chunk_index":len(chunks)
+                            })
+                    current_chunk = get_last_n_tokens(current_chunk, overlap)
+                    
+                    if count_tokens(paragraph) > chunk_size:
+                        chunks.append({
+                            "text": paragraph.strip(),
+                            "source_file": source_file,
+                            "doc_type": doc_type,
+                            "chunk_index": len(chunks)
+                        })
+                        current_chunk = get_last_n_tokens(paragraph, overlap)
+                        continue
+
+                current_chunk += "\n\n" + paragraph
 
     
     if current_chunk.strip():
         chunks.append({
-                "text":current_chunk.strip(), 
-                "source_file": source_file, 
-                "doc_type":doc_type, 
-                "chunk_index":len(chunks)
+            "text":current_chunk.strip(), 
+            "source_file": source_file, 
+            "doc_type":doc_type, 
+            "chunk_index":len(chunks)
         })
 
     return chunks
+
+
+def split_by_code_blocks(text:str)-> list[dict]:
+    parts = re.split(r"```[\s\S]*?```",text)
+
+    segments = []
+    for part in parts:
+        if part.startswith("```"):
+            segments.append({"type":"code", "text":part})
+        else:
+            part.strip()
+            segments.append({"type":"prose", "text":part})
+    return segments
 
 
 def count_tokens(text:str)-> int:
@@ -47,7 +108,7 @@ def get_last_n_tokens(text:str, overlap:int) -> str:
 if __name__ == "__main__":
     from pathlib import Path
 
-    source_file = "knowledge_base/tokio/tutorial/async.md"
+    source_file = "knowledge_base/async_book/02_execution/02_future.md"
     text = Path(source_file).read_text()
     chunks = chunk_text( text=text, source_file=source_file, doc_type="tokio_tutorial")
 

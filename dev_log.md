@@ -1,3 +1,5 @@
+## Phase 1
+
 ### Day 1
 
 - Initialized project and set up the project structure
@@ -38,3 +40,16 @@
 - Decided to use FastAPI instead of HF Spaces to get REST API response that integrates more naturally in a webapp
 - Wrapped `query()` in a FastAPI endpoint `/api/rag/query`
 - Fixed `query()` to return `(answer, sources)` tuple — was returning only the answer string, causing `ValueError: too many values to unpack`
+
+## Phase 2
+
+### Day 1 - Code-aware chunking
+
+- Rewrote `chunk_text` to handle code blocks separately from prose
+- Added `split_by_code_blocks()` using `re.split(r"(```[\s\S]*?```)", text)`, splits markdown into alternating prose and code segments
+- Code blocks are now atomic, never split regardless of size
+- Tiny code blocks (under 50 tokens) merge with surrounding prose instead of becoming isolated chunks
+- Fixed oversized single-paragraph edge case, paragraphs bigger than chunk_size get saved as their own chunk with `continue` to avoid double-appending
+- Chunk count jumped from 313 → 556. Expected, because code blocks are now isolated and previously-skipped content is properly captured
+
+**Lesson:** splitting on `\n\n` alone destroys code blocks : a markdown-aware pre-split step is necessary before any token-based chunking

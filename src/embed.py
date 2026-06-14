@@ -1,5 +1,5 @@
 from sentence_transformers import SentenceTransformer
-from src.vectorstore import upsert_chunks, create_collection
+from vectorstore import upsert_chunks, create_collection
 import chromadb
 
 
@@ -22,7 +22,7 @@ def embed_and_store(chunks:list[dict], source_file:str):
 
 if __name__ =="__main__":
     from pathlib import Path
-    from src.chunk import chunk_text
+    from chunk import chunk_text
 
     # Ingest all files
     all_files = list(Path("knowledge_base").rglob("*.md"))
