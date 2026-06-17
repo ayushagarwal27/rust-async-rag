@@ -43,7 +43,7 @@
 
 ## Phase 2
 
-### Day 1 - Code-aware chunking
+### Day 1 : Code-aware chunking
 
 - Rewrote `chunk_text` to handle code blocks separately from prose
 - Added `split_by_code_blocks()` using `re.split(r"(```[\s\S]*?```)", text)`, splits markdown into alternating prose and code segments
@@ -53,3 +53,12 @@
 - Chunk count jumped from 313 → 556. Expected, because code blocks are now isolated and previously-skipped content is properly captured
 
 **Lesson:** splitting on `\n\n` alone destroys code blocks : a markdown-aware pre-split step is necessary before any token-based chunking
+
+### Day 2 : Re-ranking (CrossEncoder, BAAI/bge-reranker-base)
+
+- Added reranking: retrieve top-20 via dense search, rerank down to top-5 with bge-reranker-base
+- Before reranking: spawn vs spawn_blocking pulled mostly irrelevant chunks
+- After reranking: io.md correctly surfaced 3 different chunks (indices 3, 4, 7) : confirmed not duplicates,genuinely the most relevant source
+- Result: spawn vs spawn_blocking now answered correctly, including JoinHandle.abort() nuance
+
+- Clarified: 556 chunk count was inflated, old chunks from pre-code-aware chunker were never deleted before re-ingesting, so they coexisted with new ones. After a clean delete + re-ingest, true count is 243.

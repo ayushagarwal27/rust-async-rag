@@ -48,3 +48,6 @@ def search(query_embedding, n_results:int = 5):
      
      return results.points
 
+if __name__ =="__main__":
+     client.delete_collection(collection_name=COLLECTION_NAME)
+     create_collection()
