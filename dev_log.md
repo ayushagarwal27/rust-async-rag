@@ -70,3 +70,10 @@
 - Scores: faithfulness 0.70, answer_relevancy 0.24, context_precision 0.78
 - Investigated low answer_relevancy: caused by RAG correctly declining to answer even when retrieved context actually contained the answer in different phrasing
 - Seem to be generation/prompt issue, not retrieval, context_precision confirms retrieval found the right chunks
+
+#### (cont.) — Full 20-question RAGAS run
+
+- faithfulness: 0.78, answer_relevancy: 0.48, context_precision: 0.91
+- context_precision strong, retrieval/reranking pipeline finding correct
+  chunks reliably
+- answer_relevancy improved from pilot (0.24 → 0.48)
