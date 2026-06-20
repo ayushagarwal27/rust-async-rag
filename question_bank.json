@@ -1,0 +1,84 @@
+{
+  "eval_data": [
+    {
+      "question": "Why does my `tokio::spawn` silently die when I drop the `JoinHandle`?",
+      "ground_truth": "Dropping a `JoinHandle` detaches the task, allowing it to run in the background; it does not cancel the task. To cancel a spawned task, you must explicitly call `abort()` on the `JoinHandle`. If the task seems to die, it may be panicking or returning an error that is being silently ignored because the handle was dropped."
+    },
+    {
+      "question": "Is it safe to run a 50ms CPU-heavy loop inside a standard `tokio::spawn`?",
+      "ground_truth": "No, running CPU-heavy operations for extended periods (typically >10-100\u03bcs) inside `tokio::spawn` blocks the worker thread and prevents other async tasks from executing. You should use `tokio::task::spawn_blocking` for operations that cannot yield."
+    },
+    {
+      "question": "How do I forcefully stop a spawned task that's stuck in an infinite loop without an `.await` point?",
+      "ground_truth": "You cannot forcefully preempt a task that never yields to the executor in cooperative scheduling. Calling `.abort()` on its `JoinHandle` only sets a cancellation flag that is checked at `.await` points. To fix this, you must either add `tokio::task::yield_now().await` inside the loop or move the blocking loop to a dedicated thread via `spawn_blocking`."
+    },
+    {
+      "question": "My whole tokio runtime just froze. How do I use tokio-console to figure out which task is blocking the executor?",
+      "ground_truth": "To use `tokio-console`, you need to instrument your application by adding the `console-subscriber` crate. Once connected, look for tasks with a high 'busy' time and no 'yields', which strongly indicates they are blocking the worker thread without yielding back to the executor."
+    },
+    {
+      "question": "I'm holding a `std::sync::Mutex` across an await point and the compiler complains. If I switch to `tokio::sync::Mutex`, is it completely safe from deadlocks?",
+      "ground_truth": "No. While `tokio::sync::Mutex` allows holding the guard across `.await` points without breaking `Send` bounds, it can still deadlock if you attempt to acquire the same mutex twice in the same task or have circular dependencies between tasks. It merely avoids blocking the OS thread while waiting for the lock."
+    },
+    {
+      "question": "Why am I getting a deadlock when I block_on a future from inside a spawned task?",
+      "ground_truth": "Calling `block_on` or standard library blocking synchronization (like `std::sync::mpsc::Receiver::recv`) from within an async context prevents the worker thread from executing other tasks. If the blocked future depends on another task making progress on the same worker thread, the runtime will deadlock."
+    },
+    {
+      "question": "How do I make my `#[instrument]` macro automatically log the arguments passed to the async function?",
+      "ground_truth": "The `#[instrument]` macro logs all function arguments by default as fields on the span. However, arguments that do not implement the `std::fmt::Debug` trait will cause compilation errors unless you explicitly ignore them using `#[instrument(skip(arg_name))]`."
+    },
+    {
+      "question": "I added tracing::info! but nothing prints to the terminal. What's missing?",
+      "ground_truth": "The `tracing` macros only emit events; they require a subscriber to collect and format them. You need to initialize a subscriber, typically by pulling in `tracing-subscriber` and calling `tracing_subscriber::fmt::init()` at the start of your application."
+    },
+    {
+      "question": "Why do my tracing spans for a single `tokio::spawn` task interleave with logs from other tasks?",
+      "ground_truth": "Async tasks yield execution at `.await` points, allowing the worker thread to pick up other tasks. Since `tracing` spans are traditionally thread-local, concurrent async execution causes interleaved logs unless you attach the span explicitly using `.instrument(span)` on the future, which correctly enters and exits the span whenever the future is polled."
+    },
+    {
+      "question": "What actually happens when a Future returns `Poll::Pending`? Does it just loop until it's ready?",
+      "ground_truth": "When a Future returns `Poll::Pending`, it yields control back to the executor and goes to sleep, preventing a busy loop. Before returning `Pending`, the future must register the `Waker` provided in the `Context`. The executor will only poll the future again after that specific `Waker` has its `wake()` method called by the reactor handling the underlying event."
+    },
+    {
+      "question": "Why do some async traits require `Pin<&mut Self>` instead of just `&mut Self` to poll?",
+      "ground_truth": "`Pin` ensures that the memory location of the Future does not move once it has been polled. This is necessary because async/await blocks compile into state machines that may contain self-referential pointers (e.g., a reference to a local variable held across an `.await` point), which would be invalidated if the Future were moved in memory."
+    },
+    {
+      "question": "Is the Tokio executor single-threaded by default?",
+      "ground_truth": "It depends on the macro used. `#[tokio::main]` configures a multi-threaded work-stealing runtime by default. However, if you use `#[tokio::main(flavor = \"current_thread\")]`, it sets up a single-threaded runtime that runs all tasks on the current OS thread."
+    },
+    {
+      "question": "I have an `mpsc` channel where the sender is much faster than the receiver. Will it eventually OOM?",
+      "ground_truth": "If you use `tokio::sync::mpsc::channel`, you must specify a bounded capacity, so it will backpressure the sender (causing `.send().await` to yield) rather than OOMing. However, if you explicitly use `mpsc::unbounded_channel`, there is no backpressure, and a faster sender will eventually consume all available memory."
+    },
+    {
+      "question": "What happens if I use `tokio::select!` on two futures but one of them resolves instantly every time?",
+      "ground_truth": "`tokio::select!` polls the branches in a pseudo-random order by default to ensure fairness. Even if one future is always ready, the other futures will still have a chance to be polled and make progress, preventing starvation."
+    },
+    {
+      "question": "Can I use `tokio::sync::Notify` to broadcast an event to 10 different tasks waiting on it?",
+      "ground_truth": "No, `Notify` is designed to wake up exactly one waiting task per call to `notify_one()`. If you need to broadcast a single event to multiple listeners, you should use `tokio::sync::broadcast`."
+    },
+    {
+      "question": "How do I cleanly shut down 50 background tasks when my app gets a SIGINT?",
+      "ground_truth": "You should use a combination of `tokio::signal::ctrl_c` to detect the SIGINT, and a `CancellationToken` cloned and passed to each task. When the signal is received, call `.cancel()` on the token. The tasks must periodically check `token.is_cancelled()` or use `tokio::select!` with `token.cancelled()` to break out of their loops and exit cleanly."
+    },
+    {
+      "question": "I'm using a CancellationToken, but my main function exits before my tasks finish cleaning up. How do I wait for them?",
+      "ground_truth": "You should use `tokio_util::task::TaskTracker`. Spawn your tasks via the tracker, call `tracker.close()` to prevent new tasks from being spawned, and then `.await` the `tracker.wait()` future in your main shutdown routine. This ensures the runtime stays alive until all tracked tasks complete their cleanup."
+    },
+    {
+      "question": "Is dropping the Tokio runtime a safe way to force cancel all running tasks?",
+      "ground_truth": "Dropping the runtime will synchronously drop all running tasks, preventing them from executing further `.await` points. However, this abruptly terminates them without running their graceful cleanup logic, and any blocking tasks (spawned via `spawn_blocking`) will continue running in the background until they complete."
+    },
+    {
+      "question": "Compiler says 'future cannot be sent between threads safely' because of an `Rc` I'm not even using. Why?",
+      "ground_truth": "The Rust compiler checks if any type held across an `.await` point implements the `Send` trait. If you declare an `Rc` (which is `!Send`) before an `.await` point, the entire Future becomes `!Send`, even if you don't explicitly use the `Rc` after the await. You must explicitly drop the `Rc` or limit its scope inside a block before the `.await`."
+    },
+    {
+      "question": "Why does the compiler complain about lifetimes when I return an async block holding a reference?",
+      "ground_truth": "Async blocks implicitly capture all referenced variables into their generated Future state machine. If you return this Future from a function, the lifetime of the returned Future is tied to the captured references. You must ensure the caller guarantees those references outlive the Future, often requiring explicit lifetime annotations or moving owned data into the block using `async move`."
+    }
+  ]
+}

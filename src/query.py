@@ -41,7 +41,8 @@ def query(question:str, n_results:int = 5)->str:
     for r in top_results:
         print(r.payload["source"], r.payload["chunk_index"])
 
-    context = "\n\n---\n\n".join([r.payload["text"] for r in top_results])
+    context_texts = [r.payload["text"] for r in top_results]
+    context = "\n\n---\n\n".join(context_texts)
     sources = [r.payload["source"] for r in top_results]
 
 
@@ -58,7 +59,7 @@ def query(question:str, n_results:int = 5)->str:
     response = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user", "content": prompt}])
     answer = response.choices[0].message.content
     # print(answer)
-    return answer, sources
+    return answer, sources, context_texts
 
 if __name__ == "__main__":
     question = "what is the difference between spawn and spawn_blocking?"

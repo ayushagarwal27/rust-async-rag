@@ -62,3 +62,11 @@
 - Result: spawn vs spawn_blocking now answered correctly, including JoinHandle.abort() nuance
 
 - Clarified: 556 chunk count was inflated, old chunks from pre-code-aware chunker were never deleted before re-ingesting, so they coexisted with new ones. After a clean delete + re-ingest, true count is 243.
+
+### Day 3 — RAGAS evaluation (3-question pilot)
+
+- Added 20 question/ground_truth pairs covering spawning, deadlocks, tracing, futures/pinning, channels, shutdown, Send/lifetime errors
+- Fixed answer_relevancy nan issue: needed explicit OpenAIEmbeddings passed via LangchainEmbeddingsWrapper
+- Scores: faithfulness 0.70, answer_relevancy 0.24, context_precision 0.78
+- Investigated low answer_relevancy: caused by RAG correctly declining to answer even when retrieved context actually contained the answer in different phrasing
+- Seem to be generation/prompt issue, not retrieval, context_precision confirms retrieval found the right chunks
