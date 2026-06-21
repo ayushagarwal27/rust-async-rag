@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from src.query import query
+from query import query
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -17,5 +17,5 @@ class QueryRequest(BaseModel):
 
 @app.post("/api/rag/query")
 def ask(req:QueryRequest):
-    answer, sources = query(req.question)
+    answer, sources, _ = query(req.question)
     return {"answer":answer, "sources":list(set(sources))}

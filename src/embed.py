@@ -1,11 +1,11 @@
 from sentence_transformers import SentenceTransformer
-from vectorstore import upsert_chunks, create_collection
-import chromadb
+from vectorstore import upsert_chunks
+# import chromadb
 
 
 model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-client = chromadb.PersistentClient(path="./data/chroma")
-collection = client.get_or_create_collection("async-rust-docs")
+# client = chromadb.PersistentClient(path="./data/chroma")
+# collection = client.get_or_create_collection("async-rust-docs")
 
 def embed_and_store(chunks:list[dict], source_file:str):
     text = [c["text"] for c in chunks]

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from vectorstore import search
-import chromadb
+# import chromadb
 from openai import OpenAI
 
 load_dotenv(override=True)
@@ -12,8 +12,8 @@ api_key = os.getenv('OPENAI_API_KEY')
 model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 reranker = CrossEncoder("BAAI/bge-reranker-base")
 
-client = chromadb.PersistentClient(path="./data/chroma")
-collection = client.get_collection("async-rust-docs")
+# client = chromadb.PersistentClient(path="./data/chroma")
+# collection = client.get_collection("async-rust-docs")
 openai = OpenAI(api_key=api_key)
 
 def query(question:str, n_results:int = 5)->str:
