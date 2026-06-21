@@ -7,6 +7,8 @@
 # ChromaDB data (large binary files, reproducible by running embed.py)
 data/
 
+images/
+
 # Python cache
 __pycache__/
 *.pyc
