@@ -18,3 +18,5 @@ knowledge_base/
 .python-version
 
 .DS_Store
+
+eval_results.json

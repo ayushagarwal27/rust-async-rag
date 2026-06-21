@@ -47,14 +47,17 @@ def query(question:str, n_results:int = 5)->str:
 
 
     prompt = f"""You are an expert in async Rust debugging.
-    Use ONLY the following documentation excerpts to answer the question.
-    If the answer isn't in the excerpts, say so.
+                Answer the question using the information in the excerpts below. You may 
+                synthesize and connect information across multiple excerpts, even if no 
+                single excerpt uses the exact same wording as the question. Only say the 
+                excerpts don't cover this if the underlying concept is genuinely absent, 
+                not just differently phrased.
 
-    Context:
-    {context}
+                Context:
+                {context}
 
-    Question: {question}
-    Answer:"""
+                Question: {question}
+                Answer:"""
     
     response = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user", "content": prompt}])
     answer = response.choices[0].message.content

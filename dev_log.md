@@ -77,3 +77,13 @@
 - context_precision strong, retrieval/reranking pipeline finding correct
   chunks reliably
 - answer_relevancy improved from pilot (0.24 → 0.48)
+
+### Day 4 - Improve Answer Relevancy via Softened Prompt
+
+- Softened prompt: allowed synthesis across excerpts, clarified refusal should only happen if the concept is genuinely absent, not just differently worded
+- Re-ran full 20-question RAGAS eval:
+  - faithfulness: 0.78 → 0.88
+  - answer_relevancy: 0.48 → 0.74
+  - context_precision: 0.91 → 0.87 (minor dip)
+- Confirms: the corpus and retrieval were already solid; the bottleneck was an overly conservative generation prompt
+- Also fixed RAGAS-internal IncompleteOutputException by raising the judge LLM's max_tokens to 2000 (separate from the app's own LLM config)

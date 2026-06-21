@@ -3,8 +3,9 @@ from pathlib import Path
 from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics import faithfulness, answer_relevancy, context_precision
+from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
 from query import query
 
@@ -40,11 +41,16 @@ def run_rag_on_eval_set(eval_data:list[dict])-> list[dict]:
 def build_ragas_dataset(results:list[dict])-> Dataset:
     return Dataset.from_list(results)
 
+ragas_llm = LangchainLLMWrapper(
+    ChatOpenAI(model="gpt-4o-mini", max_tokens=2000)  # increase from default
+)
+
 def run_evaluations(dataset:Dataset):
     ragas_embeddings = LangchainEmbeddingsWrapper(OpenAIEmbeddings(model="text-embedding-3-small"))
     scores = evaluate(
         dataset, 
         metrics=[faithfulness, answer_relevancy, context_precision],
+        llm=ragas_llm,
         embeddings=ragas_embeddings,
     )
     return scores
