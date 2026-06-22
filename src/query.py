@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 
 from sentence_transformers import SentenceTransformer, CrossEncoder
-from vectorstore import search
+from src.vectorstore import search
 # import chromadb
 from openai import OpenAI
 

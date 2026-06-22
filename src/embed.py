@@ -60,14 +60,14 @@ if __name__ =="__main__":
     # print(f"\nTotal chunks in DB: {collection.count()}")
 
     # Test Query
-    query = "how does tokio schedule tasks"
-    query_embedding = model.encode([query])[0]
-    results = collection.query(
-        query_embeddings=[query_embedding.tolist()],
-        n_results=3
-    )
-    print(f"\n--- top 3 results for: '{query}' ---")
-    for i, doc in enumerate(results["documents"][0]):
-        print(f"\nresult {i}:")
-        print(doc[:200])
-        print(f"source: {results['metadatas'][0][i]['source']}")
+    # query = "how does tokio schedule tasks"
+    # query_embedding = model.encode([query])[0]
+    # # results = collection.query(
+    # #     query_embeddings=[query_embedding.tolist()],
+    # #     n_results=3
+    # # )
+    # print(f"\n--- top 3 results for: '{query}' ---")
+    # for i, doc in enumerate(results["documents"][0]):
+    #     print(f"\nresult {i}:")
+    #     print(doc[:200])
+    #     print(f"source: {results['metadatas'][0][i]['source']}")

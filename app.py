@@ -1,5 +1,5 @@
 import gradio as gr
-from query import query
+from src.query import query
 
 
 def chat_fn(message, history):
@@ -15,7 +15,7 @@ demo = gr.ChatInterface(
     fn=chat_fn,
     title="🦀 Async Rust Debugging Assistant",
     description=(
-        "Ask about debugging async Rust — deadlocks, stuck futures, "
+        "Ask about debugging async Rust : deadlocks, stuck futures, "
         "tokio task scheduling, and tracing instrumentation. "
         "Answers are grounded in the tokio docs, tracing crate, and Rust async book."
     ),
