@@ -2,6 +2,7 @@ import httpx
 from bs4 import BeautifulSoup
 from markdownify import markdownify
 
+# TODO: update to get latest docs from web and convert to markdown
 
 
 def fetch_page(url:str)-> str:
