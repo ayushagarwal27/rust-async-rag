@@ -87,3 +87,13 @@
   - context_precision: 0.91 → 0.87 (minor dip)
 - Confirms: the corpus and retrieval were already solid; the bottleneck was an overly conservative generation prompt
 - Also fixed RAGAS-internal IncompleteOutputException by raising the judge LLM's max_tokens to 2000 (separate from the app's own LLM config)
+
+## Phase 3
+
+### Day 1
+
+- Installed `mcp[cli]` SDK, decided on FastMCP (decorator-based, lowest boilerplate) over the raw SDK
+- Built `mcp_server.py` with three tools :
+  - `explain_stack_trace` : for pasted error messages, panics, JoinError
+  - `search_async_patterns` : for general "how do I" debugging questions
+  - `find_tokio_examples` : for code example requests
