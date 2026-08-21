@@ -1,73 +1,127 @@
-# 🦀 Async Rust Debugging RAG
+# 🦀 Async Rust RAG
 
-![Prototype Screenshot](/images/Screenshot1.png)
-
-A retrieval-augmented generation (RAG) system for debugging async Rust code.
-Ingests tokio.rs docs, the tracing crate, and the Rust async book into a
-vector database and answers debugging questions about deadlocks, stuck futures,
-task scheduling, and async stack traces — grounded only in the retrieved docs.
-
-Built from scratch to understand the core RAG pipeline:
-chunking, embedding, retrieval, generation — then wrapped as an API.
+A retrieval-augmented generation chatbot for debugging async Rust. Ingests 66 markdown files from the Rust async book, tokio docs, and the tracing crate — chunks them, embeds them into Pinecone, and answers questions grounded in those sources via a streaming React UI, FastAPI, Gradio, and MCP tools.
 
 **Live demo:** [huggingface.co/spaces/Ayush027/async-rust-rag](https://huggingface.co/spaces/Ayush027/async-rust-rag)
 
-## Tech Stack
-
-- **Phase 1:** Python · Qdrant · sentence-transformers · tiktoken · FastAPI
-- **Phase 2:** Code-aware chunking · BGE re-ranking · RAGAS evaluation · Gradio
-- **Phase 3:** Agentic RAG
-- **Phase 4:** MCP server
-
 ---
 
-## Architecture
+## How the chatbot works
 
+```text
+User message
+     │
+     ▼
+┌─────────────────────────────────────────────────┐
+│  Guardrail classifier  (gpt-4o-mini + Pydantic  │
+│  structured output)                             │
+│                                                 │
+│  rag ──────────────────────────────────────►┐  │
+│  direct (greeting / small talk) ──────────►┐│  │
+│  off_topic ── canned refusal, no LLM call  ││  │
+└────────────────────────────────────────────┼┼──┘
+                                             ││
+          ┌──────────────────────────────────┘│
+          │  direct branch                    │
+          ▼                                   │  rag branch
+   gpt-4o-mini (no retrieval)                 │
+          │                                   ▼
+          │                        HyDE — generate a
+          │                        hypothetical doc passage
+          │                               │
+          │                               ▼
+          │                        Pinecone dense search
+          │                        top-10 candidates
+          │                               │
+          │                               ▼
+          │                        CrossEncoder rerank
+          │                        (ms-marco-MiniLM-L-6-v2)
+          │                        top-10 → top-3
+          │                               │
+          │                               ▼
+          │                        gpt-4o-mini grounded
+          │                        on retrieved context
+          │                               │
+          └───────────────────────────────┘
+                                          │
+                                          ▼
+                               Streaming SSE response
+                               + conversation history saved
+                               to Redis (hot) + MongoDB (cold)
 ```
-knowledge_base/ (66 markdown files)
-   tokio.rs docs · tracing crate · Rust async book
-        │
-        ▼
-   chunk.py — code-aware chunking, ~500-token chunks, 50-token overlap
-        │
-        ▼
-   embed.py — embed chunks with BAAI/bge-small-en-v1.5
-        │
-        ▼
-   Qdrant Cloud (hosted vector store, 243 chunks)
-        │
-        ▼
-   query.py — embed question → retrieve top-20 → rerank to top-5
-              (BAAI/bge-reranker-base CrossEncoder)
-        │
-        ▼
-   gpt-4o-mini — answer grounded in retrieved context
-        │
-        ▼
-   FastAPI endpoint (/api/rag/query) — answer + sources
-   Gradio UI (HuggingFace Spaces)
+
+**Key design choices:**
+
+- **HyDE (Hypothetical Document Embeddings)** — before searching Pinecone, the LLM writes a short passage that would answer the question. Embedding that passage instead of the raw question bridges the vocabulary gap between questions and documentation.
+- **Two-stage retrieval** — dense search returns 10 candidates; the CrossEncoder reranker scores every (question, passage) pair and keeps the top 3. This doubled answer relevancy vs. dense-only (0.48 → 0.74).
+- **Pydantic structured output for routing** — the classifier uses `with_structured_output` so the LLM is forced into a valid `Literal["rag", "direct", "off_topic"]`. No string parsing or normalisation needed.
+- **Session persistence** — history is keyed by `session_id`. Redis (24 h TTL) is the hot path; MongoDB is the fallback on cache miss or server restart. Both are written concurrently on every turn.
+- **Code-aware chunking** — pre-splits on triple-backtick fences before paragraph splitting so code blocks are never cut mid-block. Chunks are ~500 tokens with 50-token overlap.
+
+---
+
+## RAGAS Evaluation
+
+Evaluated on 20 corpus-vetted question/ground-truth pairs.
+
+| Metric            | Phase 1 (dense only) | Phase 2 (+ reranking) |
+|-------------------|----------------------|-----------------------|
+| Faithfulness      | 0.78                 | 0.88                  |
+| Answer Relevancy  | 0.48                 | 0.74                  |
+| Context Precision | 0.91                 | 0.87                  |
+
+---
+
+## Project structure
+
+```text
+async-rust-rag/
+├── app.py                        # Gradio chat UI (HuggingFace Spaces entry point)
+├── mcp_server.py                 # MCP server — 3 tools for Claude integration
+├── pyproject.toml
+├── uv.lock
+│
+├── backend/
+│   ├── .env                      # Secret keys (gitignored)
+│   ├── .env.example              # Template — copy to .env and fill in values
+│   ├── config.py                 # Pydantic Settings — single source for all env vars
+│   ├── question_bank.json        # 20 QA pairs used for RAGAS evaluation
+│   │
+│   ├── rag/
+│   │   ├── chunk.py              # Code-aware markdown chunker
+│   │   ├── embed.py              # Ingestion pipeline: chunk → embed → upsert to Pinecone
+│   │   ├── vectorstore.py        # Pinecone index creation + LangChain PineconeVectorStore
+│   │   ├── query.py              # LangGraph RAG pipeline (classify → retrieve → rerank → generate)
+│   │   ├── session.py            # Redis + MongoDB conversation history per session_id
+│   │   └── evaluate.py           # RAGAS evaluation runner
+│   │
+│   └── api/
+│       ├── app.py                # FastAPI app — CORS, static files, route registration
+│       └── routes/
+│           ├── rag.py            # POST /api/rag/query  (legacy single-turn)
+│           └── chat.py           # POST /api/chat  POST /api/chat/stream  GET /api/chat/history/{id}
+│
+├── frontend/
+│   ├── index.html
+│   ├── vite.config.js            # /api proxy → :8000 in dev
+│   ├── package.json
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx               # React chat UI — streaming SSE, session management, history load
+│       └── App.css
+│
+├── knowledge_base/               # Source markdown docs (gitignored, ~66 files)
+│   ├── async_book/
+│   ├── tokio/
+│   └── tracing/
+│
+└── images/
+    └── Screenshot1.png
 ```
 
 ---
 
-## RAGAS Evaluation (Phase 2)
-
-Evaluated on 20 question/ground_truth pairs covering spawning, deadlocks,
-tracing, futures/pinning, channels, shutdown, and Send/lifetime errors.
-All ground truths vetted against the actual corpus before scoring.
-
-| Metric            | Before (Phase 1) | After (Phase 2) |
-| ----------------- | ---------------- | --------------- |
-| Faithfulness      | 0.78             | 0.88            |
-| Answer Relevancy  | 0.48             | 0.74            |
-| Context Precision | 0.91             | 0.87            |
-
-Key finding: re-ranking resolved retrieval gaps (spawn vs spawn_blocking);
-prompt tuning drove the largest jump in answer relevancy.
-
----
-
-## How to run
+## Setup
 
 ### 1. Install dependencies
 
@@ -77,70 +131,116 @@ uv sync
 
 ### 2. Configure environment variables
 
-```env
-OPENAI_API_KEY=your-key-here
-QDRANT_URL=https://xxxx.cloud.qdrant.io
-QDRANT_API_KEY=your-key-here
+```bash
+cp backend/.env.example backend/.env
+# then fill in backend/.env with your keys
 ```
 
-### 3. Build the vector store
+Required variables:
+
+| Variable | Description |
+| --- | --- |
+| `OPENAI_API_KEY` | Used for embeddings (`text-embedding-3-large`) and generation (`gpt-4o-mini`) |
+| `PINECONE_API_KEY` | Pinecone serverless vector store |
+| `PINECONE_INDEX_NAME` | Defaults to `async-rust-docs` |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST endpoint (not a socket URL) |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis auth token |
+| `MONGO_URL` | MongoDB connection string |
+| `MONGO_DB` | Database name, defaults to `rustrag` |
+
+### 3. Ingest the knowledge base (one-time)
+
+Place your markdown files under `knowledge_base/` then run:
 
 ```bash
-uv run python -c "from src.vectorstore import create_collection; create_collection()"
-uv run python src/embed.py
+uv run python -m backend.rag.embed
 ```
 
-### 4. Ask questions via CLI
+This chunks, embeds, and upserts ~243 chunks into Pinecone. Re-running is safe — IDs are stable so it upserts rather than duplicates.
+
+---
+
+## Running the app
+
+### FastAPI + React UI (recommended)
 
 ```bash
-uv run python src/query.py
+# Build the frontend first
+cd frontend && npm install && npm run build && cd ..
+
+# Start the API server
+uv run uvicorn backend.api.app:app --reload
 ```
 
-### 5. Run as an API
+Open [http://localhost:8000](http://localhost:8000). The React app is served from `frontend/dist/`.
+
+API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Frontend dev server (hot reload)
 
 ```bash
-cd src && uv run uvicorn server:app --reload
+# Terminal 1 — backend
+uv run uvicorn backend.api.app:app --reload
+
+# Terminal 2 — frontend (proxies /api to :8000)
+cd frontend && npm run dev
 ```
 
-```bash
-curl -X POST http://localhost:8000/api/rag/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "how do I debug a deadlock in tokio?"}'
-```
+Open [http://localhost:5173](http://localhost:5173).
 
-### 6. Run the Gradio UI locally
+### Gradio UI
 
 ```bash
 uv run python app.py
 ```
 
----
+### MCP server (Claude integration)
 
-## Project structure
-
+```bash
+uv run python mcp_server.py
 ```
-async-rust-rag/
-├── app.py                 # Gradio chat UI
-├── knowledge_base/        # Source markdown docs (gitignored)
-│   ├── tokio/
-│   ├── tracing/
-│   └── async_book/
-├── src/
-│   ├── chunk.py           # Code-aware chunker
-│   ├── embed.py           # Ingestion + embedding pipeline
-│   ├── query.py           # Retrieval + reranking + generation
-│   ├── vectorstore.py     # Qdrant client, hybrid search, upsert
-│   ├── server.py          # FastAPI app
-│   └── evaluate.py        # RAGAS evaluation harness
-├── question_bank.json     # 20 eval questions, corpus-vetted
-├── dev_log.md             # build log — bugs found, fixes, lessons
-├── pyproject.toml
-└── uv.lock
+
+Exposes three tools: `explain_stack_trace`, `search_async_patterns`, `find_tokio_examples`.
+
+### CLI query
+
+```bash
+uv run python -m backend.rag.query
+```
+
+### RAGAS evaluation
+
+```bash
+uv run python -m backend.rag.evaluate
+# writes eval_results.json
 ```
 
 ---
 
-## Dev log
+## API reference
 
-The full build journey — including bugs hit and how they were fixed — is in
-[`dev_log.md`](dev_log.md).
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/api/chat` | Multi-turn chat, returns `{answer, sources, session_id}` |
+| `POST` | `/api/chat/stream` | Streaming SSE — yields `{token}` per chunk, then `{done, sources, session_id}` |
+| `GET` | `/api/chat/history/{session_id}` | Fetch conversation history for a session |
+| `POST` | `/api/rag/query` | Legacy single-turn endpoint |
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Embeddings | OpenAI `text-embedding-3-large` (3072-dim) |
+| Vector store | Pinecone serverless |
+| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
+| LLM | `gpt-4o-mini` |
+| RAG orchestration | LangChain + LangGraph |
+| Session store | Upstash Redis (hot) + MongoDB (cold) |
+| API | FastAPI + uvicorn |
+| Frontend | React + Vite |
+| Gradio UI | HuggingFace Spaces |
+| MCP | `fastmcp` |
+| Evaluation | RAGAS |
+| Package manager | `uv` |

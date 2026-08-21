@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from src.query import query
+from backend.rag.query import query
 
 mcp = FastMCP('async-rust-debugger')
 

@@ -1,5 +1,5 @@
 import gradio as gr
-from src.query import query
+from backend.rag.query import query
 
 
 def chat_fn(message, history):
