@@ -1,6 +1,6 @@
-# 🦀 Async Rust RAG
+# 🦀 Async Rust AI Chatbot
 
-A retrieval-augmented generation chatbot for debugging async Rust. Ingests 66 markdown files from the Rust async book, tokio docs, and the tracing crate — chunks them, embeds them into Pinecone, and answers questions grounded in those sources via a streaming React UI, FastAPI, Gradio, and MCP tools.
+A retrieval-augmented generation chatbot for debugging async Rust. Ingests 66 markdown files from the Rust async book, tokio docs, and the tracing crate : chunks them, embeds them into Pinecone, and answers questions grounded in those sources via a streaming React UI, FastAPI, Gradio, and MCP tools.
 
 **Live demo:** [huggingface.co/spaces/Ayush027/async-rust-rag](https://huggingface.co/spaces/Ayush027/async-rust-rag)
 
@@ -65,7 +65,7 @@ User message
 Evaluated on 20 corpus-vetted question/ground-truth pairs.
 
 | Metric            | Phase 1 (dense only) | Phase 2 (+ reranking) |
-|-------------------|----------------------|-----------------------|
+| ----------------- | -------------------- | --------------------- |
 | Faithfulness      | 0.78                 | 0.88                  |
 | Answer Relevancy  | 0.48                 | 0.74                  |
 | Context Precision | 0.91                 | 0.87                  |
@@ -138,15 +138,15 @@ cp backend/.env.example backend/.env
 
 Required variables:
 
-| Variable | Description |
-| --- | --- |
-| `OPENAI_API_KEY` | Used for embeddings (`text-embedding-3-large`) and generation (`gpt-4o-mini`) |
-| `PINECONE_API_KEY` | Pinecone serverless vector store |
-| `PINECONE_INDEX_NAME` | Defaults to `async-rust-docs` |
-| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST endpoint (not a socket URL) |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis auth token |
-| `MONGO_URL` | MongoDB connection string |
-| `MONGO_DB` | Database name, defaults to `rustrag` |
+| Variable                   | Description                                                                   |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`           | Used for embeddings (`text-embedding-3-large`) and generation (`gpt-4o-mini`) |
+| `PINECONE_API_KEY`         | Pinecone serverless vector store                                              |
+| `PINECONE_INDEX_NAME`      | Defaults to `async-rust-docs`                                                 |
+| `UPSTASH_REDIS_REST_URL`   | Upstash Redis REST endpoint (not a socket URL)                                |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis auth token                                                      |
+| `MONGO_URL`                | MongoDB connection string                                                     |
+| `MONGO_DB`                 | Database name, defaults to `rustrag`                                          |
 
 ### 3. Ingest the knowledge base (one-time)
 
@@ -219,28 +219,28 @@ uv run python -m backend.rag.evaluate
 
 ## API reference
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `POST` | `/api/chat` | Multi-turn chat, returns `{answer, sources, session_id}` |
-| `POST` | `/api/chat/stream` | Streaming SSE — yields `{token}` per chunk, then `{done, sources, session_id}` |
-| `GET` | `/api/chat/history/{session_id}` | Fetch conversation history for a session |
-| `POST` | `/api/rag/query` | Legacy single-turn endpoint |
+| Method | Endpoint                         | Description                                                                    |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------ |
+| `POST` | `/api/chat`                      | Multi-turn chat, returns `{answer, sources, session_id}`                       |
+| `POST` | `/api/chat/stream`               | Streaming SSE — yields `{token}` per chunk, then `{done, sources, session_id}` |
+| `GET`  | `/api/chat/history/{session_id}` | Fetch conversation history for a session                                       |
+| `POST` | `/api/rag/query`                 | Legacy single-turn endpoint                                                    |
 
 ---
 
 ## Tech stack
 
-| Layer | Technology |
-| --- | --- |
-| Embeddings | OpenAI `text-embedding-3-large` (3072-dim) |
-| Vector store | Pinecone serverless |
-| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
-| LLM | `gpt-4o-mini` |
-| RAG orchestration | LangChain + LangGraph |
-| Session store | Upstash Redis (hot) + MongoDB (cold) |
-| API | FastAPI + uvicorn |
-| Frontend | React + Vite |
-| Gradio UI | HuggingFace Spaces |
-| MCP | `fastmcp` |
-| Evaluation | RAGAS |
-| Package manager | `uv` |
+| Layer             | Technology                                 |
+| ----------------- | ------------------------------------------ |
+| Embeddings        | OpenAI `text-embedding-3-large` (3072-dim) |
+| Vector store      | Pinecone serverless                        |
+| Reranker          | `cross-encoder/ms-marco-MiniLM-L-6-v2`     |
+| LLM               | `gpt-4o-mini`                              |
+| RAG orchestration | LangChain + LangGraph                      |
+| Session store     | Upstash Redis (hot) + MongoDB (cold)       |
+| API               | FastAPI + uvicorn                          |
+| Frontend          | React + Vite                               |
+| Gradio UI         | HuggingFace Spaces                         |
+| MCP               | `fastmcp`                                  |
+| Evaluation        | RAGAS                                      |
+| Package manager   | `uv`                                       |
