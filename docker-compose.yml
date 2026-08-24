@@ -1,5 +1,6 @@
 # Production deployment — joins the existing Traefik instance (from the
-# n8n stack at /docker/n8n) for TLS termination on rustler.in.
+# n8n stack at /docker/n8n) for TLS termination on chat.rustler.in.
+# rustler.in itself is served by a separate frontend/Node app.
 #
 # Deploy: docker compose up -d --build
 
@@ -14,7 +15,7 @@ services:
       - .env
     labels:
       - traefik.enable=true
-      - "traefik.http.routers.rustrag.rule=Host(`rustler.in`)"
+      - "traefik.http.routers.rustrag.rule=Host(`chat.rustler.in`)"
       - traefik.http.routers.rustrag.tls=true
       - traefik.http.routers.rustrag.entrypoints=web,websecure
       - traefik.http.routers.rustrag.tls.certresolver=mytlschallenge
@@ -24,7 +25,7 @@ services:
       - traefik.http.middlewares.rustrag.headers.browserXSSFilter=true
       - traefik.http.middlewares.rustrag.headers.contentTypeNosniff=true
       - traefik.http.middlewares.rustrag.headers.forceSTSHeader=true
-      - traefik.http.middlewares.rustrag.headers.SSLHost=rustler.in
+      - traefik.http.middlewares.rustrag.headers.SSLHost=chat.rustler.in
       - traefik.http.middlewares.rustrag.headers.STSIncludeSubdomains=true
       - traefik.http.middlewares.rustrag.headers.STSPreload=true
       - traefik.http.routers.rustrag.middlewares=rustrag@docker

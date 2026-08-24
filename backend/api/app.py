@@ -10,7 +10,7 @@ app = FastAPI(title="Async Rust RAG API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://rustler.in"],
+    allow_origins=["https://chat.rustler.in"],
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
