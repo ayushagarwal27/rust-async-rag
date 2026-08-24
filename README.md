@@ -2,7 +2,7 @@
 
 A retrieval-augmented generation chatbot for debugging async Rust. Ingests 66 markdown files from the Rust async book, tokio docs, and the tracing crate : chunks them, embeds them into Pinecone, and answers questions grounded in those sources via a streaming React UI, FastAPI, Gradio, and MCP tools.
 
-**Live demo:** [huggingface.co/spaces/Ayush027/async-rust-rag](https://huggingface.co/spaces/Ayush027/async-rust-rag)
+**Live demo:** [chat.rustler.in](https://chat.rustler.in/) · [huggingface.co/spaces/Ayush027/async-rust-rag](https://huggingface.co/spaces/Ayush027/async-rust-rag)
 
 ---
 
@@ -175,6 +175,27 @@ uv run uvicorn backend.api.app:app --reload
 Open [http://localhost:8000](http://localhost:8000). The React app is served from `frontend/dist/`.
 
 API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Docker (local)
+
+Builds the React frontend and Python backend into a single image and runs it standalone (no Traefik/reverse proxy needed for local use).
+
+```bash
+# .env at the project root, with the same keys as backend/.env
+cp backend/.env .env
+
+docker build -t async-rust-rag .
+docker run -d --name async-rust-rag --env-file .env -p 8000:8000 async-rust-rag
+```
+
+Open [http://localhost:8000](http://localhost:8000). API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+```bash
+# stop and remove the container
+docker rm -f async-rust-rag
+```
+
+> `docker-compose.yml` is for the production deploy (joins an existing Traefik network) — use `docker build`/`docker run` for local testing instead.
 
 ### Frontend dev server (hot reload)
 
